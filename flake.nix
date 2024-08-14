@@ -47,6 +47,9 @@
         binaries = pkgs.buildEnv {
           name = "rust-binaries";
           paths = builtins.map mkBinary (builtins.attrNames (builtins.readDir "${myRust}/bin")) ++ [ pkgs.rust-analyzer ];
+          postBuild = ''
+            ln -s ${myRust}/lib $out/lib
+          '';
         };
       in
       {
