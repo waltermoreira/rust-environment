@@ -29,15 +29,30 @@
         };
         shell = shell-utils.myShell.${system};
         craneLib = crane.mkLib pkgs;
-      in
-      {
-        devShells.default = shell {
-          name = "rust";
+        myRust = pkgs.rust-bin.stable.latest.default.override {
+          extensions = [ "rust-src" ];
+        };
+        env = {
           packages = [
-            (pkgs.rust-bin.stable.latest.default.override {
-              extensions = [ "rust-src" ];
-            })
+            myRust
+            pkgs.rust-analyzer
           ];
         };
+        mkBinary = bin: pkgs.writeShellApplication {
+          name = bin;
+          runtimeInputs = with pkgs; [ nix ];
+          text = ''
+            nix develop ${self}#rustEnv --command ${bin} "$@"
+          '';
+        };
+        binaries = pkgs.buildEnv {
+          name = "rust-binaries";
+          paths = builtins.map mkBinary (builtins.attrNames (builtins.readDir "${myRust}/bin")) ++ [ pkgs.rust-analyzer ];
+        };
+      in
+      {
+        devShells.default = shell (env // { name = "rust"; });
+        devShells.rustEnv = pkgs.mkShell (env // { name = "rust-env"; });
+        packages.default = binaries;
       });
 }
